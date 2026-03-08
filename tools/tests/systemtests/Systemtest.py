@@ -355,6 +355,10 @@ class Systemtest:
                 env_file.write(f"{key}={value}\n")
 
     def __unpack_reference_results(self):
+        if not self.reference_result.path.exists():
+            raise FileNotFoundError(
+                f"Reference results not found: {self.reference_result.path}. "
+                f"Generate them first using generate_reference_results.py.")
         with tarfile.open(self.reference_result.path) as reference_results_tared:
             # specify which folder to extract to
             reference_results_tared.extractall(self.system_test_dir / PRECICE_REL_REFERENCE_DIR)
@@ -373,7 +377,12 @@ class Systemtest:
         """
         logging.debug(f"Running fieldcompare for {self}")
         time_start = time.perf_counter()
-        self.__unpack_reference_results()
+        try:
+            self.__unpack_reference_results()
+        except FileNotFoundError as e:
+            logging.critical(str(e))
+            elapsed_time = time.perf_counter() - time_start
+            return FieldCompareResult(1, [], [str(e)], self, elapsed_time)
         docker_compose_content = self.__get_field_compare_compose_file()
         stdout_data = []
         stderr_data = []
