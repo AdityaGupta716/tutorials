@@ -521,6 +521,10 @@ class Systemtest:
         """
         if self.max_time is None:
             return
+        if not (isinstance(self.max_time, (int, float)) and self.max_time > 0):
+            logging.warning(
+                f"Invalid max_time {self.max_time!r} for {self}; must be a positive number. Skipping override.")
+            return
         config_path = self.system_test_dir / "precice-config.xml"
         if not config_path.exists():
             logging.warning(
@@ -532,7 +536,7 @@ class Systemtest:
         except Exception as e:
             logging.warning(f"Could not read {config_path} to apply max_time override: {e}")
             return
-        pattern = r'(<max-time[^>]*\svalue=")([^"]*)(")'
+        pattern = r'(<max-time\s+value=")([^"]*)(")'
         matches = re.findall(pattern, text)
         if not matches:
             logging.warning(
