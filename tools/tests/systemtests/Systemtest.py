@@ -518,6 +518,7 @@ class Systemtest:
         """
         If max_time is set, override the <max-time value="..."/> in precice-config.xml
         of the copied tutorial directory. Applies to both test runs and reference generation.
+        Targets only <max-time> tags to avoid modifying time-window-size or other attributes.
         """
         if self.max_time is None:
             return
