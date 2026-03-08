@@ -532,7 +532,7 @@ class Systemtest:
         except Exception as e:
             logging.warning(f"Could not read {config_path} to apply max_time override: {e}")
             return
-        pattern = r'(<max-time[^>]*\svalue=")([^"]*)(\")'
+        pattern = r'(<max-time[^>]*\svalue=")([^"]*)(")'
         matches = re.findall(pattern, text)
         if not matches:
             logging.warning(
