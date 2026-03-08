@@ -134,6 +134,7 @@ class Systemtest:
     arguments: SystemtestArguments
     case_combination: CaseCombination
     reference_result: ReferenceResult
+    max_time: Optional[float] = None
     params_to_use: Dict[str, str] = field(init=False)
     env: Dict[str, str] = field(init=False)
 
@@ -513,11 +514,47 @@ class Systemtest:
         with open(self.system_test_dir / "stderr.log", 'w') as stderr_file:
             stderr_file.write("\n".join(stderr_data))
 
+    def __apply_precice_max_time_override(self):
+        """
+        If max_time is set, override the <max-time value="..."/> in precice-config.xml
+        of the copied tutorial directory. Applies to both test runs and reference generation.
+        """
+        if self.max_time is None:
+            return
+        config_path = self.system_test_dir / "precice-config.xml"
+        if not config_path.exists():
+            logging.warning(
+                f"Requested max_time override for {self}, but no precice-config.xml "
+                f"found in {self.system_test_dir}")
+            return
+        try:
+            text = config_path.read_text()
+        except Exception as e:
+            logging.warning(f"Could not read {config_path} to apply max_time override: {e}")
+            return
+        pattern = r'(<max-time[^>]*\svalue=")([^"]*)(\")'
+        matches = re.findall(pattern, text)
+        if not matches:
+            logging.warning(
+                f"Requested max_time override for {self}, but no <max-time .../> tag "
+                f"found in {config_path}")
+            return
+        if len(matches) > 1:
+            logging.warning(
+                f"Multiple <max-time> tags found in {config_path}; overriding all to {self.max_time}")
+        new_text = re.sub(pattern, rf"\g<1>{self.max_time}\g<3>", text)
+        try:
+            config_path.write_text(new_text)
+            logging.info(f"Overwrote max-time in {config_path} to {self.max_time} for {self}")
+        except Exception as e:
+            logging.warning(f"Failed to write updated {config_path}: {e}")
+
     def __prepare_for_run(self, run_directory: Path):
         """
         Prepares the run_directory with folders and datastructures needed for every systemtest execution
         """
         self.__copy_tutorial_into_directory(run_directory)
+        self.__apply_precice_max_time_override()
         self.__copy_tools(run_directory)
         self.__put_gitignore(run_directory)
         host_uid, host_gid = self.__get_uid_gid()
